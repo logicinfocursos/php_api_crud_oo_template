@@ -1,0 +1,81 @@
+<?php
+require_once 'src/models/utils/database.php';
+
+// Cria a conexão com o banco de dados
+$db = Database::getConnection();
+
+// Define o cabeçalho para JSON
+header('Content-Type: application/json');
+
+// Obtém a URL da requisição
+$url = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+// Diretório onde as entidades estão localizadas
+$entitiesDir = 'src/models/entities';
+
+// Obtém a lista de todas as entidades disponíveis
+$entities = array_diff(scandir($entitiesDir), ['.', '..']);
+
+// Itera sobre cada entidade
+foreach ($entities as $entity) {
+    $entityName = pathinfo($entity, PATHINFO_FILENAME);
+
+   // if($entityName==='baseEntity') continue;
+    // Caminho da entidade
+    $entityPath = $entitiesDir . '/' . $entity;
+
+    // Controlador da entidade
+    $controllerClass = ucfirst($entityName) . 'Controller';
+    $controllerFile = "src/controllers/{$entityName}.controller.php";
+    require_once $controllerFile;
+
+    // Repositório da entidade
+    $repositoryClass = ucfirst($entityName) . 'Repository';
+    $repositoryFile = "src/models/repositories/{$entityName}.repository.php";
+    require_once $repositoryFile;
+
+    // Instância do controlador e do repositório
+    $controller = new $controllerClass(new $repositoryClass($db));
+
+    // Tratar as rotas da entidade
+    if (strpos($url, "/$entityName") === 0) {
+        handleRoutes($url, $controller);
+    }
+}
+
+function handleRoutes($url, $controller)
+{
+    $urlParts = explode('/', $url);
+
+    switch ($_SERVER['REQUEST_METHOD']) {
+        case 'GET':
+            // Se houver um ID na URL, executa o getById
+            if (isset($urlParts[2]) && is_numeric($urlParts[2])) {
+                $id = $urlParts[2];
+                echo json_encode($controller->getById($id));
+            } elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && !empty($_GET)) {
+                // Se houver parâmetros de consulta, executa o getListByKey
+                echo json_encode($controller->getListByKey($_GET));
+            } else {
+                // Senão, executa o getAll
+                echo json_encode($controller->getAll());
+            }
+            break;
+
+        case 'POST':
+            $data = json_decode(file_get_contents('php://input'), true);
+            echo json_encode($controller->add($data));
+            break;
+
+        case 'PUT':
+            $id = $urlParts[2];
+            $data = json_decode(file_get_contents('php://input'), true);
+            echo json_encode($controller->update($id, $data));
+            break;
+
+        case 'DELETE':
+            $id = $urlParts[2];
+            echo json_encode($controller->delete($id));
+            break;
+    }
+}

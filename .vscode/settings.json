@@ -1,0 +1,9 @@
+{
+    "workbench.colorCustomizations": {
+        "statusBar.background": "#ff5833",
+        "statusBar.debuggingBackground": "#ff5833",
+        "statusBar.noFolderBackground": "#ff5833",
+        "statussBar.prominentBackground": "#ff5833"
+    },
+    "liveServer.settings.port": 5501
+}

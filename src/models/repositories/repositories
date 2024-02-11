@@ -1,0 +1,75 @@
+<?php
+// src/repositories/Repositories.php
+
+abstract class Repositories
+{
+    protected $db;
+    protected $table;
+
+    public function __construct($db, $table)
+    {
+        $this->db = $db;
+        $this->table = $table;
+    }
+
+    protected function fetchData($query, $params = [])
+    {
+        $statement = $this->db->prepare($query);
+        $statement->execute($params);
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    protected function executeQuery($query, $params = [])
+    {
+        $statement = $this->db->prepare($query);
+        $statement->execute($params);
+        return $statement->rowCount();
+    }
+
+    public function getAll()
+    {
+        $query = "SELECT * FROM $this->table";
+        return $this->fetchData($query);
+    }
+
+    public function getById($id)
+    {
+        $query = "SELECT * FROM $this->table WHERE id = :id";
+        $params = [':id' => $id];
+        return $this->fetchData($query, $params);
+    }
+
+    public function add($data)
+    {
+        $columns = implode(", ", array_keys($data));
+        $values = ":" . implode(", :", array_keys($data));
+
+        $query = "INSERT INTO $this->table ($columns) VALUES ($values)";
+        $this->executeQuery($query, $data);
+        return $this->getById($this->db->lastInsertId());
+    }
+
+    public function update($id, $data)
+    {
+        $columns = "";
+        foreach ($data as $key => $value) {
+            $columns .= "$key=:$key, ";
+        }
+        $columns = rtrim($columns, ", ");
+
+        $query = "UPDATE $this->table SET $columns WHERE id = :id";
+        $data[':id'] = $id;
+        $this->executeQuery($query, $data);
+        return $this->getById($id);
+    }
+
+    public function delete($id)
+    {
+        $query = "DELETE FROM $this->table WHERE id = :id";
+        
+        $params = [':id' => $id];
+
+        $this->executeQuery($query, $params);
+        return ['message' => 'Deleted successfully'];
+    }
+}
